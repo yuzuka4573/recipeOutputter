@@ -194,6 +194,64 @@
             border: 2px solid #4a5568;
         }
         
+        .autocomplete-container {
+            position: relative;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .autocomplete-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #ced4da;
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .autocomplete-suggestion {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.2s ease;
+        }
+        
+        .autocomplete-suggestion:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-suggestion.active {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .suggestion-name {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .autocomplete-suggestion.active .suggestion-name {
+            color: white;
+        }
+        
+        .suggestion-tier {
+            font-size: 0.85em;
+            color: #6c757d;
+            margin-left: 8px;
+        }
+        
+        .autocomplete-suggestion.active .suggestion-tier {
+            color: rgba(255,255,255,0.8);
         @media (max-width: 768px) {
             .main-content {
                 grid-template-columns: 1fr;
@@ -247,7 +305,9 @@
                         </div>
                         <div class="materials-section">
                             <div class="material-item">
-                                <input type="text" placeholder="材料名" class="material-name">
+                                <div class="autocomplete-container">
+                                    <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
+                                </div>
                                 <select class="material-tier">
                                     <option value="1">ティア 1</option>
                                     <option value="2">ティア 2</option>
@@ -273,6 +333,14 @@
                     <button type="button" class="btn btn-primary" onclick="addItem()">アイテム登録</button>
                 </div>
                 
+                <div style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e9ecef;">
+                    <h3>📂 JSON読み込み</h3>
+                    <div class="form-group">
+                        <label for="jsonFile">JSONファイルを選択</label>
+                        <input type="file" id="jsonFile" accept=".json" onchange="loadJSON(this)">
+                    </div>
+                </div>
+                
                 <div class="item-list">
                     <h3>📋 登録済みアイテム</h3>
                     <div id="itemsList"></div>
@@ -295,13 +363,17 @@
     <script>
         let items = [];
         let recipeCounter = 1;
+        let allMaterials = new Set(); // すべての材料名を保存
+        let currentActiveIndex = -1; // オートコンプリートの選択インデックス
 
         function addMaterial(recipeIndex) {
             const recipe = document.querySelector(`[data-recipe-index="${recipeIndex}"] .materials-section`);
             const materialDiv = document.createElement('div');
             materialDiv.className = 'material-item';
             materialDiv.innerHTML = `
-                <input type="text" placeholder="材料名" class="material-name">
+                <div class="autocomplete-container">
+                    <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
+                </div>
                 <select class="material-tier">
                     ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
                 </select>
@@ -328,7 +400,9 @@
                 </div>
                 <div class="materials-section">
                     <div class="material-item">
-                        <input type="text" placeholder="材料名" class="material-name">
+                        <div class="autocomplete-container">
+                            <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
+                        </div>
                         <select class="material-tier">
                             ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
                         </select>
@@ -360,6 +434,215 @@
                     deleteButton.style.display = 'none';
                 }
             });
+        }
+
+        function showAutocomplete(input) {
+            const query = input.value.toLowerCase();
+            const container = input.parentElement;
+            
+            // 既存の予測候補を削除
+            const existingSuggestions = container.querySelector('.autocomplete-suggestions');
+            if (existingSuggestions) {
+                existingSuggestions.remove();
+            }
+            
+            if (query.length === 0) {
+                return;
+            }
+            
+            // マッチする材料を検索
+            const matches = Array.from(allMaterials).filter(material => 
+                material.name.toLowerCase().includes(query)
+            );
+            
+            if (matches.length === 0) {
+                return;
+            }
+            
+            // 予測候補を作成
+            const suggestionsDiv = document.createElement('div');
+            suggestionsDiv.className = 'autocomplete-suggestions';
+            
+            matches.forEach((material, index) => {
+                const suggestionDiv = document.createElement('div');
+                suggestionDiv.className = 'autocomplete-suggestion';
+                suggestionDiv.innerHTML = `
+                    <span class="suggestion-name">${material.name}</span>
+                    <span class="suggestion-tier">ティア ${material.tier}</span>
+                `;
+                
+                suggestionDiv.addEventListener('mousedown', (e) => {
+                    e.preventDefault(); // blurイベントを防ぐ
+                    selectSuggestion(input, material);
+                });
+                
+                suggestionsDiv.appendChild(suggestionDiv);
+            });
+            
+            container.appendChild(suggestionsDiv);
+            currentActiveIndex = -1;
+        }
+
+        function hideAutocomplete(input) {
+            setTimeout(() => {
+                const container = input.parentElement;
+                const suggestions = container.querySelector('.autocomplete-suggestions');
+                if (suggestions) {
+                    suggestions.remove();
+                }
+                currentActiveIndex = -1;
+            }, 150); // 少し遅延させてクリックイベントを優先
+        }
+
+        function handleKeydown(event, input) {
+            const container = input.parentElement;
+            const suggestions = container.querySelector('.autocomplete-suggestions');
+            
+            if (!suggestions) {
+                return;
+            }
+            
+            const suggestionItems = suggestions.querySelectorAll('.autocomplete-suggestion');
+            
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                currentActiveIndex = Math.min(currentActiveIndex + 1, suggestionItems.length - 1);
+                updateActiveSuggestion(suggestionItems);
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                currentActiveIndex = Math.max(currentActiveIndex - 1, -1);
+                updateActiveSuggestion(suggestionItems);
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                if (currentActiveIndex >= 0 && currentActiveIndex < suggestionItems.length) {
+                    const activeSuggestion = suggestionItems[currentActiveIndex];
+                    const materialName = activeSuggestion.querySelector('.suggestion-name').textContent;
+                    const materialTier = parseInt(activeSuggestion.querySelector('.suggestion-tier').textContent.replace('ティア ', ''));
+                    
+                    selectSuggestion(input, { name: materialName, tier: materialTier });
+                }
+            } else if (event.key === 'Escape') {
+                suggestions.remove();
+                currentActiveIndex = -1;
+            }
+        }
+
+        function updateActiveSuggestion(suggestionItems) {
+            suggestionItems.forEach((item, index) => {
+                if (index === currentActiveIndex) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
+            });
+        }
+
+        function selectSuggestion(input, material) {
+            input.value = material.name;
+            
+            // ティアも自動設定
+            const materialItem = input.closest('.material-item');
+            const tierSelect = materialItem.querySelector('.material-tier');
+            tierSelect.value = material.tier;
+            
+            // 予測候補を削除
+            const container = input.parentElement;
+            const suggestions = container.querySelector('.autocomplete-suggestions');
+            if (suggestions) {
+                suggestions.remove();
+            }
+            
+            currentActiveIndex = -1;
+        }
+
+        function updateMaterialsList() {
+            allMaterials.clear();
+            
+            // 登録済みアイテムから材料を収集
+            items.forEach(item => {
+                allMaterials.add({ name: item.name, tier: item.tier });
+                
+                item.recipes.forEach(recipe => {
+                    recipe.materials.forEach(material => {
+                        allMaterials.add({ name: material.name, tier: material.tier });
+                    });
+                });
+            });
+        }
+
+        function loadJSON(input) {
+            const file = input.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const jsonData = JSON.parse(e.target.result);
+                    let loadedCount = 0;
+                    
+                    // 形式1: 完全なレシピJSON形式 { items: [...] }
+                    if (jsonData.items && Array.isArray(jsonData.items)) {
+                        // 既存のデータに追加するか確認
+                        if (items.length > 0) {
+                            if (!confirm('既存のデータに追加しますか？「キャンセル」を選択すると既存データを置き換えます。')) {
+                                items = [];
+                            }
+                        }
+                        
+                        // データを追加
+                        jsonData.items.forEach(item => {
+                            if (item.name && item.tier && item.recipes) {
+                                items.push(item);
+                                loadedCount++;
+                            }
+                        });
+                        
+                        updateItemsList();
+                        updateMaterialsList();
+                        generateJSON();
+                        
+                        alert(`${loadedCount}個のアイテム（レシピ付き）を読み込みました`);
+                    }
+                    // 形式2: 配列形式
+                    else if (Array.isArray(jsonData)) {
+                        let materialsAdded = 0;
+                        
+                        jsonData.forEach(item => {
+                            if (typeof item === 'string') {
+                                // シンプルなアイテム名配列: ["アイテム1", "アイテム2"]
+                                allMaterials.add({ name: item, tier: 1 }); // デフォルトでティア1
+                                materialsAdded++;
+                            } else if (typeof item === 'object' && item.name) {
+                                // ティア付きアイテムリスト: [{"name": "アイテム1", "tier": 2}]
+                                const tier = item.tier || 1; // tierが指定されていない場合は1
+                                allMaterials.add({ name: item.name, tier: tier });
+                                materialsAdded++;
+                            }
+                        });
+                        
+                        if (materialsAdded > 0) {
+                            alert(`${materialsAdded}個のアイテムを材料候補として読み込みました`);
+                        } else {
+                            alert('読み込める形式のアイテムが見つかりませんでした');
+                        }
+                    }
+                    // 形式3: 単純なオブジェクト形式（ティア付き）
+                    else if (typeof jsonData === 'object' && jsonData.name) {
+                        // 単一アイテム: {"name": "アイテム1", "tier": 2}
+                        const tier = jsonData.tier || 1;
+                        allMaterials.add({ name: jsonData.name, tier: tier });
+                        alert(`1個のアイテム「${jsonData.name}」を材料候補として読み込みました`);
+                    }
+                    else {
+                        alert('対応していないJSONフォーマットです。\n\n対応形式:\n1. 完全なレシピJSON: {"items": [...]}\n2. アイテム名配列: ["アイテム1", "アイテム2"]\n3. ティア付き配列: [{"name": "アイテム1", "tier": 2}]');
+                    }
+                } catch (error) {
+                    alert('JSONファイルの読み込みに失敗しました: ' + error.message);
+                }
+            };
+            
+            reader.readAsText(file);
+            input.value = ''; // ファイル選択をリセット
         }
 
         function addItem() {
@@ -406,12 +689,14 @@
             
             items.push(item);
             updateItemsList();
+            updateMaterialsList(); // 材料リストを更新
             clearForm();
         }
 
         function removeItem(index) {
             items.splice(index, 1);
             updateItemsList();
+            updateMaterialsList(); // 材料リストを更新
             generateJSON();
         }
 
@@ -496,6 +781,7 @@
         function clearAll() {
             if (confirm('すべてのデータを削除しますか？')) {
                 items = [];
+                allMaterials.clear(); // 材料リストもクリア
                 updateItemsList();
                 clearForm();
                 document.getElementById('jsonOutput').textContent = 'ここにJSONが表示されます';
@@ -504,6 +790,7 @@
 
         // 初期化
         updateRecipeDeleteButtons();
+        updateMaterialsList();
     </script>
 </body>
 </html>
