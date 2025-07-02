@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ゲームレシピJSON生成ツール</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .form-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .form-section h2 {
+            color: #495057;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ced4da;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 3px rgba(0,123,255,0.25);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(40,167,69,0.4);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #fd7e14 100%);
+        }
+        
+        .btn-danger:hover {
+            box-shadow: 0 5px 15px rgba(220,53,69,0.4);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+        }
+        
+        .btn-primary:hover {
+            box-shadow: 0 5px 15px rgba(0,123,255,0.4);
+        }
+        
+        .materials-section {
+            border: 2px dashed #007bff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            background: rgba(0,123,255,0.05);
+        }
+        
+        .material-item {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .recipe-item {
+            border: 2px solid #e9ecef;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 10px;
+            background: rgba(108,117,125,0.05);
+        }
+        
+        .recipe-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .item-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+        }
+        
+        .item-card {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .output-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 12px;
+            border: 2px solid #e9ecef;
+        }
+        
+        .json-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 2px solid #4a5568;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .material-item {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 ゲームレシピJSON生成ツール</h1>
+            <p>アイテムとレシピを管理するJSONを簡単に作成できます</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="form-section">
+                <h2>📦 アイテム登録</h2>
+                
+                <div class="form-group">
+                    <label for="itemName">アイテム名</label>
+                    <input type="text" id="itemName" placeholder="例: 鉄の剣">
+                </div>
+                
+                <div class="form-group">
+                    <label for="itemTier">ティア (1-10)</label>
+                    <select id="itemTier">
+                        <option value="1">ティア 1</option>
+                        <option value="2">ティア 2</option>
+                        <option value="3">ティア 3</option>
+                        <option value="4">ティア 4</option>
+                        <option value="5">ティア 5</option>
+                        <option value="6">ティア 6</option>
+                        <option value="7">ティア 7</option>
+                        <option value="8">ティア 8</option>
+                        <option value="9">ティア 9</option>
+                        <option value="10">ティア 10</option>
+                    </select>
+                </div>
+                
+                <div id="recipesContainer">
+                    <h3>🔨 レシピ</h3>
+                    <div class="recipe-item" data-recipe-index="0">
+                        <div class="recipe-header">
+                            <h4>レシピ 1</h4>
+                            <button type="button" class="btn btn-danger" onclick="removeRecipe(0)" style="display: none;">削除</button>
+                        </div>
+                        <div class="materials-section">
+                            <div class="material-item">
+                                <input type="text" placeholder="材料名" class="material-name">
+                                <select class="material-tier">
+                                    <option value="1">ティア 1</option>
+                                    <option value="2">ティア 2</option>
+                                    <option value="3">ティア 3</option>
+                                    <option value="4">ティア 4</option>
+                                    <option value="5">ティア 5</option>
+                                    <option value="6">ティア 6</option>
+                                    <option value="7">ティア 7</option>
+                                    <option value="8">ティア 8</option>
+                                    <option value="9">ティア 9</option>
+                                    <option value="10">ティア 10</option>
+                                </select>
+                                <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
+                                <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn" onclick="addMaterial(0)">+ 材料追加</button>
+                    </div>
+                </div>
+                
+                <div style="margin-top: 20px;">
+                    <button type="button" class="btn" onclick="addRecipe()">+ レシピ追加</button>
+                    <button type="button" class="btn btn-primary" onclick="addItem()">アイテム登録</button>
+                </div>
+                
+                <div class="item-list">
+                    <h3>📋 登録済みアイテム</h3>
+                    <div id="itemsList"></div>
+                </div>
+            </div>
+            
+            <div class="output-section">
+                <h2>📄 JSON出力</h2>
+                <button type="button" class="btn btn-primary" onclick="generateJSON()">JSON生成</button>
+                <button type="button" class="btn" onclick="downloadJSON()">JSONダウンロード</button>
+                <button type="button" class="btn btn-danger" onclick="clearAll()">全クリア</button>
+                
+                <div class="json-output" id="jsonOutput">
+                    ここにJSONが表示されます
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let items = [];
+        let recipeCounter = 1;
+
+        function addMaterial(recipeIndex) {
+            const recipe = document.querySelector(`[data-recipe-index="${recipeIndex}"] .materials-section`);
+            const materialDiv = document.createElement('div');
+            materialDiv.className = 'material-item';
+            materialDiv.innerHTML = `
+                <input type="text" placeholder="材料名" class="material-name">
+                <select class="material-tier">
+                    ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
+                </select>
+                <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
+                <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
+            `;
+            recipe.appendChild(materialDiv);
+        }
+
+        function removeMaterial(button) {
+            button.parentElement.remove();
+        }
+
+        function addRecipe() {
+            const container = document.getElementById('recipesContainer');
+            const recipeDiv = document.createElement('div');
+            recipeDiv.className = 'recipe-item';
+            recipeDiv.setAttribute('data-recipe-index', recipeCounter);
+            
+            recipeDiv.innerHTML = `
+                <div class="recipe-header">
+                    <h4>レシピ ${recipeCounter + 1}</h4>
+                    <button type="button" class="btn btn-danger" onclick="removeRecipe(${recipeCounter})">削除</button>
+                </div>
+                <div class="materials-section">
+                    <div class="material-item">
+                        <input type="text" placeholder="材料名" class="material-name">
+                        <select class="material-tier">
+                            ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
+                        </select>
+                        <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
+                        <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
+                    </div>
+                </div>
+                <button type="button" class="btn" onclick="addMaterial(${recipeCounter})">+ 材料追加</button>
+            `;
+            
+            container.appendChild(recipeDiv);
+            recipeCounter++;
+            updateRecipeDeleteButtons();
+        }
+
+        function removeRecipe(recipeIndex) {
+            const recipe = document.querySelector(`[data-recipe-index="${recipeIndex}"]`);
+            recipe.remove();
+            updateRecipeDeleteButtons();
+        }
+
+        function updateRecipeDeleteButtons() {
+            const recipes = document.querySelectorAll('.recipe-item');
+            recipes.forEach((recipe, index) => {
+                const deleteButton = recipe.querySelector('.recipe-header .btn-danger');
+                if (recipes.length > 1) {
+                    deleteButton.style.display = 'inline-block';
+                } else {
+                    deleteButton.style.display = 'none';
+                }
+            });
+        }
+
+        function addItem() {
+            const itemName = document.getElementById('itemName').value.trim();
+            const itemTier = parseInt(document.getElementById('itemTier').value);
+            
+            if (!itemName) {
+                alert('アイテム名を入力してください');
+                return;
+            }
+            
+            const recipes = [];
+            const recipeElements = document.querySelectorAll('.recipe-item');
+            
+            recipeElements.forEach(recipeElement => {
+                const materials = [];
+                const materialElements = recipeElement.querySelectorAll('.material-item');
+                
+                materialElements.forEach(materialElement => {
+                    const name = materialElement.querySelector('.material-name').value.trim();
+                    const tier = parseInt(materialElement.querySelector('.material-tier').value);
+                    const quantity = parseInt(materialElement.querySelector('.material-quantity').value);
+                    
+                    if (name && quantity > 0) {
+                        materials.push({ name, tier, quantity });
+                    }
+                });
+                
+                if (materials.length > 0) {
+                    recipes.push({ materials });
+                }
+            });
+            
+            if (recipes.length === 0) {
+                alert('最低1つのレシピと材料を入力してください');
+                return;
+            }
+            
+            const item = {
+                name: itemName,
+                tier: itemTier,
+                recipes: recipes
+            };
+            
+            items.push(item);
+            updateItemsList();
+            clearForm();
+        }
+
+        function removeItem(index) {
+            items.splice(index, 1);
+            updateItemsList();
+            generateJSON();
+        }
+
+        function updateItemsList() {
+            const itemsList = document.getElementById('itemsList');
+            itemsList.innerHTML = '';
+            
+            items.forEach((item, index) => {
+                const itemCard = document.createElement('div');
+                itemCard.className = 'item-card';
+                itemCard.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>${item.name}</strong> (ティア ${item.tier})
+                            <div style="font-size: 0.9em; color: #666;">
+                                レシピ数: ${item.recipes.length}
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-danger" onclick="removeItem(${index})">削除</button>
+                    </div>
+                `;
+                itemsList.appendChild(itemCard);
+            });
+        }
+
+        function clearForm() {
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemTier').value = '1';
+            
+            // レシピを1つだけ残して他を削除
+            const recipesContainer = document.getElementById('recipesContainer');
+            const recipeItems = recipesContainer.querySelectorAll('.recipe-item');
+            for (let i = 1; i < recipeItems.length; i++) {
+                recipeItems[i].remove();
+            }
+            
+            // 最初のレシピの材料を1つだけ残して他を削除
+            const firstRecipe = recipesContainer.querySelector('.recipe-item');
+            const materialItems = firstRecipe.querySelectorAll('.material-item');
+            for (let i = 1; i < materialItems.length; i++) {
+                materialItems[i].remove();
+            }
+            
+            // 最初の材料をクリア
+            const firstMaterial = firstRecipe.querySelector('.material-item');
+            firstMaterial.querySelector('.material-name').value = '';
+            firstMaterial.querySelector('.material-tier').value = '1';
+            firstMaterial.querySelector('.material-quantity').value = '1';
+            
+            recipeCounter = 1;
+            updateRecipeDeleteButtons();
+        }
+
+        function generateJSON() {
+            const result = {
+                items: items
+            };
+            
+            const jsonOutput = document.getElementById('jsonOutput');
+            jsonOutput.textContent = JSON.stringify(result, null, 2);
+        }
+
+        function downloadJSON() {
+            if (items.length === 0) {
+                alert('ダウンロードするアイテムがありません');
+                return;
+            }
+            
+            const result = {
+                items: items
+            };
+            
+            const dataStr = JSON.stringify(result, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = 'game_recipes.json';
+            link.click();
+        }
+
+        function clearAll() {
+            if (confirm('すべてのデータを削除しますか？')) {
+                items = [];
+                updateItemsList();
+                clearForm();
+                document.getElementById('jsonOutput').textContent = 'ここにJSONが表示されます';
+            }
+        }
+
+        // 初期化
+        updateRecipeDeleteButtons();
+    </script>
+</body>
+</html>
