@@ -41,20 +41,18 @@
         }
         
         .main-content {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
             padding: 30px;
         }
         
-        .form-section {
+        .section {
             background: #f8f9fa;
             padding: 25px;
             border-radius: 12px;
             border: 2px solid #e9ecef;
+            margin-bottom: 30px;
         }
         
-        .form-section h2 {
+        .section h2 {
             color: #495057;
             margin-bottom: 20px;
             font-size: 1.5em;
@@ -133,13 +131,23 @@
         .material-item {
             display: grid;
             grid-template-columns: 2fr 1fr 1fr auto;
-            gap: 10px;
+            gap: 15px;
             align-items: center;
             margin-bottom: 15px;
             padding: 15px;
             background: white;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .tier-display {
+            background: linear-gradient(135deg, #007bff 0%, #6610f2 100%);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 80px;
         }
         
         .recipe-item {
@@ -253,13 +261,13 @@
         .autocomplete-suggestion.active .suggestion-tier {
             color: rgba(255,255,255,0.8);
         @media (max-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr;
-            }
-            
             .material-item {
                 grid-template-columns: 1fr;
                 gap: 10px;
+            }
+            
+            .tier-display {
+                min-width: auto;
             }
         }
     </style>
@@ -272,12 +280,14 @@
         </div>
         
         <div class="main-content">
-            <div class="form-section">
+            <div class="section">
                 <h2>📦 アイテム登録</h2>
                 
                 <div class="form-group">
                     <label for="itemName">アイテム名</label>
-                    <input type="text" id="itemName" placeholder="例: 鉄の剣">
+                    <div class="autocomplete-container">
+                        <input type="text" id="itemName" placeholder="例: 鉄の剣" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -308,18 +318,8 @@
                                 <div class="autocomplete-container">
                                     <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                                 </div>
-                                <select class="material-tier">
-                                    <option value="1">ティア 1</option>
-                                    <option value="2">ティア 2</option>
-                                    <option value="3">ティア 3</option>
-                                    <option value="4">ティア 4</option>
-                                    <option value="5">ティア 5</option>
-                                    <option value="6">ティア 6</option>
-                                    <option value="7">ティア 7</option>
-                                    <option value="8">ティア 8</option>
-                                    <option value="9">ティア 9</option>
-                                    <option value="10">ティア 10</option>
-                                </select>
+                                <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                                <input type="hidden" class="material-tier" value="1">
                                 <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                                 <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
                             </div>
@@ -347,7 +347,7 @@
                 </div>
             </div>
             
-            <div class="output-section">
+            <div class="section">
                 <h2>📄 JSON出力</h2>
                 <button type="button" class="btn btn-primary" onclick="generateJSON()">JSON生成</button>
                 <button type="button" class="btn" onclick="downloadJSON()">JSONダウンロード</button>
@@ -374,9 +374,8 @@
                 <div class="autocomplete-container">
                     <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                 </div>
-                <select class="material-tier">
-                    ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
-                </select>
+                <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                <input type="hidden" class="material-tier" value="1">
                 <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                 <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
             `;
@@ -403,9 +402,8 @@
                         <div class="autocomplete-container">
                             <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                         </div>
-                        <select class="material-tier">
-                            ${Array.from({length: 10}, (_, i) => `<option value="${i+1}">ティア ${i+1}</option>`).join('')}
-                        </select>
+                        <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                        <input type="hidden" class="material-tier" value="1">
                         <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                         <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
                     </div>
@@ -542,8 +540,21 @@
             
             // ティアも自動設定
             const materialItem = input.closest('.material-item');
-            const tierSelect = materialItem.querySelector('.material-tier');
-            tierSelect.value = material.tier;
+            if (materialItem) {
+                // 材料用のティア設定
+                const tierDisplay = materialItem.querySelector('.tier-display .tier-value');
+                const tierHidden = materialItem.querySelector('.material-tier');
+                if (tierDisplay && tierHidden) {
+                    tierDisplay.textContent = material.tier;
+                    tierHidden.value = material.tier;
+                }
+            } else {
+                // アイテム名用のティア設定
+                const itemTierSelect = document.getElementById('itemTier');
+                if (itemTierSelect) {
+                    itemTierSelect.value = material.tier;
+                }
+            }
             
             // 予測候補を削除
             const container = input.parentElement;
@@ -556,15 +567,25 @@
         }
 
         function updateMaterialsList() {
-            allMaterials.clear();
+            // 既存の材料リストを保持
+            const existingMaterials = new Set();
+            allMaterials.forEach(material => {
+                existingMaterials.add(JSON.stringify(material));
+            });
             
             // 登録済みアイテムから材料を収集
             items.forEach(item => {
-                allMaterials.add({ name: item.name, tier: item.tier });
+                const itemMaterial = JSON.stringify({ name: item.name, tier: item.tier });
+                if (!existingMaterials.has(itemMaterial)) {
+                    allMaterials.add({ name: item.name, tier: item.tier });
+                }
                 
                 item.recipes.forEach(recipe => {
                     recipe.materials.forEach(material => {
-                        allMaterials.add({ name: material.name, tier: material.tier });
+                        const materialStr = JSON.stringify({ name: material.name, tier: material.tier });
+                        if (!existingMaterials.has(materialStr)) {
+                            allMaterials.add({ name: material.name, tier: material.tier });
+                        }
                     });
                 });
             });
@@ -743,6 +764,7 @@
             // 最初の材料をクリア
             const firstMaterial = firstRecipe.querySelector('.material-item');
             firstMaterial.querySelector('.material-name').value = '';
+            firstMaterial.querySelector('.tier-display .tier-value').textContent = '1';
             firstMaterial.querySelector('.material-tier').value = '1';
             firstMaterial.querySelector('.material-quantity').value = '1';
             
