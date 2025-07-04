@@ -148,6 +148,49 @@
             font-weight: 600;
             text-align: center;
             min-width: 80px;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            position: relative;
+        }
+        
+        .tier-display:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0,123,255,0.3);
+        }
+        
+        .tier-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #007bff;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            z-index: 1001;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .tier-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            color: #495057;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .tier-option:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .tier-option:last-child {
+            border-bottom: none;
+        }
+        
+        .tier-option.selected {
+            background-color: #007bff;
+            color: white;
         }
         
         .recipe-item {
@@ -318,7 +361,7 @@
                                 <div class="autocomplete-container">
                                     <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                                 </div>
-                                <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                                <div class="tier-display" onclick="showTierDropdown(this)">ティア <span class="tier-value">1</span></div>
                                 <input type="hidden" class="material-tier" value="1">
                                 <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                                 <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
@@ -374,7 +417,7 @@
                 <div class="autocomplete-container">
                     <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                 </div>
-                <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                <div class="tier-display" onclick="showTierDropdown(this)">ティア <span class="tier-value">1</span></div>
                 <input type="hidden" class="material-tier" value="1">
                 <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                 <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
@@ -402,7 +445,7 @@
                         <div class="autocomplete-container">
                             <input type="text" placeholder="材料名" class="material-name" oninput="showAutocomplete(this)" onblur="hideAutocomplete(this)" onkeydown="handleKeydown(event, this)">
                         </div>
-                        <div class="tier-display">ティア <span class="tier-value">1</span></div>
+                        <div class="tier-display" onclick="showTierDropdown(this)">ティア <span class="tier-value">1</span></div>
                         <input type="hidden" class="material-tier" value="1">
                         <input type="number" placeholder="個数" class="material-quantity" min="1" value="1">
                         <button type="button" class="btn btn-danger" onclick="removeMaterial(this)">削除</button>
@@ -479,6 +522,58 @@
             
             container.appendChild(suggestionsDiv);
             currentActiveIndex = -1;
+        }
+
+        function showTierDropdown(tierDisplay) {
+            // 他のドロップダウンを閉じる
+            document.querySelectorAll('.tier-dropdown').forEach(dropdown => {
+                dropdown.remove();
+            });
+            
+            const currentTier = parseInt(tierDisplay.querySelector('.tier-value').textContent);
+            
+            const dropdown = document.createElement('div');
+            dropdown.className = 'tier-dropdown';
+            
+            for (let i = 1; i <= 10; i++) {
+                const option = document.createElement('div');
+                option.className = 'tier-option';
+                if (i === currentTier) {
+                    option.classList.add('selected');
+                }
+                option.textContent = `ティア ${i}`;
+                option.onclick = () => selectTier(tierDisplay, i);
+                dropdown.appendChild(option);
+            }
+            
+            tierDisplay.appendChild(dropdown);
+            
+            // 外側をクリックしたらドロップダウンを閉じる
+            const closeDropdown = (event) => {
+                if (!tierDisplay.contains(event.target)) {
+                    dropdown.remove();
+                    document.removeEventListener('click', closeDropdown);
+                }
+            };
+            
+            setTimeout(() => {
+                document.addEventListener('click', closeDropdown);
+            }, 10);
+        }
+
+        function selectTier(tierDisplay, tier) {
+            const tierValue = tierDisplay.querySelector('.tier-value');
+            const materialItem = tierDisplay.closest('.material-item');
+            const hiddenInput = materialItem.querySelector('.material-tier');
+            
+            tierValue.textContent = tier;
+            hiddenInput.value = tier;
+            
+            // ドロップダウンを閉じる
+            const dropdown = tierDisplay.querySelector('.tier-dropdown');
+            if (dropdown) {
+                dropdown.remove();
+            }
         }
 
         function hideAutocomplete(input) {
